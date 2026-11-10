@@ -276,12 +276,10 @@ def main() -> int:
 
     rating = load_rating(args.rating)
     ordered_channels = [(classify(variants[0]), variants) for variants in buckets.values()]
-    group_positions = {group: position for position, group in enumerate(GROUP_ORDER)}
     ordered_channels.sort(
         key=lambda item: (
             rating_position(item[1][0], rating) is None,
             rating_position(item[1][0], rating) or 0,
-            group_positions[item[0]],
             item[1][0].name.casefold(),
         )
     )
