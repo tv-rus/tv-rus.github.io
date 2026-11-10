@@ -70,7 +70,7 @@ python docs/generate_playlist.py \
 https://prakht.github.io/tvgo/ru.m3u
 ```
 
-Push в `main`, затрагивающий `docs/`, автоматически публикуется workflow `.github/workflows/pages.yml`.
+GitHub Pages публикует содержимое `docs/` из ветки `main`; после обновления `docs/ru.m3u` достаточно выполнить push.
 
 ## TiviMate на AM7
 
