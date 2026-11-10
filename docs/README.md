@@ -67,7 +67,7 @@ python docs/generate_playlist.py \
 После публикации GitHub Pages плейлист доступен по адресу:
 
 ```text
-https://prakht.github.io/tvgo/ru.m3u
+https://tv-rus.github.io/ru.m3u
 ```
 
 GitHub Pages публикует содержимое `docs/` из ветки `main`; после обновления `docs/ru.m3u` достаточно выполнить push.
