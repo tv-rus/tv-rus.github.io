@@ -49,6 +49,53 @@ RATING_ALIASES = {
     "матч": "матчтв",
     "первый": "первыйканал",
 }
+# Exact upstream IDs/names, not transliteration: similarly named thematic and
+# regional channels must not inherit the federal channel's position.
+RATING_CHANNEL_IDS = {
+    "Russia1": "Россия 1",
+    "NTV": "НТВ",
+    "ChannelOne": "Первый канал",
+    "Channel5": "Пятый канал",
+    "RENTV": "РЕН ТВ",
+    "TVCentr": "ТВ Центр",
+    "Domashniy": "Домашний",
+    "STS": "СТС",
+    "TNT": "ТНТ",
+    "Zvezda": "Звезда",
+    "TV3": "ТВ-3",
+    "Carousel": "Карусель",
+    "Friday": "Пятница!",
+    "Russia24": "Россия 24",
+    "Mir": "Мир",
+    "OTR": "ОТР",
+    "Che": "Че!",
+    "U": "Ю",
+    "Spas": "Спас",
+    "Solnce": "Солнце",
+    "MuzTV": "Муз-ТВ",
+    "Subbota": "Суббота!",
+    "2x2": "2x2",
+    "Pobeda": "Победа",
+    "MosfilmGoldCollection": "Мосфильм. Золотая коллекция",
+    "Russkiyroman": "Русский роман",
+    "KinoTV": "Кино ТВ",
+    "RusskiyBestseller": "Русский бестселлер",
+    "Domkino": "Дом кино",
+    "Muzhskoekino": "Мужское кино",
+    "Kinoseriya": "Киносерия",
+    "IllusionPlus": "Иллюзион+",
+    "NasheNovoeKino": "Наше новое кино",
+    "Channel5International": "Пятый International",
+    "Mir24": "Мир 24",
+    "Izvestia": "Известия",
+    "RBKTV": "РБК",
+    "T24": "Т24",
+    "Nauka": "Наука",
+    "MoyaPlaneta": "Моя планета",
+    "Okhotairybalka": "Охота и рыбалка",
+    "ZhivayaPlaneta": "Живая планета",
+    "Doctor": "Доктор",
+}
 NOISE_PATTERN = re.compile(
     r"(?:^|\W)(?:radio|радио|webcam|вебкам|камера|shopping|shop|магазин|"
     r"adult|взросл|эротик|porn|тест|test|demo|weather|погода)(?:\W|$)",
@@ -139,13 +186,43 @@ def load_rating(path: Path) -> dict[str, int]:
 
 
 def rating_position(channel: Channel, rating: dict[str, int]) -> int | None:
+    aliases = {normalized_name(key): normalized_name(value) for key, value in RATING_CHANNEL_IDS.items()}
+    tvg_id = channel.attrs.get("tvg-id", "").strip()
+    # Only quality variants share the base identity, not @PlusN/@Belarus/etc.
+    base_id = re.sub(r"@(?:sd|hd|fhd|uhd|4k)$", "", tvg_id, flags=re.IGNORECASE)
+    if base_id.casefold().endswith(".ru"):
+        canonical = aliases.get(normalized_name(base_id[:-3]))
+        if canonical in rating:
+            return rating[canonical]
     names = (channel.name, channel.attrs.get("tvg-name", ""))
     for name in names:
         normalized = normalized_name(name)
-        canonical = RATING_ALIASES.get(normalized, normalized)
+        canonical = RATING_ALIASES.get(normalized, aliases.get(normalized, normalized))
         if canonical in rating:
             return rating[canonical]
     return None
+
+
+def rating_sort_key(channel: Channel, rating: dict[str, int]) -> tuple[bool, int, str]:
+    position = rating_position(channel, rating)
+    name = re.sub(r" \[Резерв \d+\]$", "", channel.name)
+    return position is None, position or 0, name.casefold()
+
+
+def reorder_playlist(text: str, rating: dict[str, int]) -> str:
+    """Reorder intact EXTINF blocks without changing streams or metadata."""
+    prefix: list[str] = []
+    blocks: list[list[str]] = []
+    for line in text.splitlines(keepends=True):
+        if line.lstrip().startswith("#EXTINF:"):
+            blocks.append([])
+        (blocks[-1] if blocks else prefix).append(line)
+    parsed = [parse_playlist("".join(block), 0)[0] for block in blocks]
+    if any(len(channels) != 1 for channels in parsed):
+        raise ValueError("Каждая запись EXTINF должна содержать ровно один поток")
+    ordered = sorted(zip(blocks, parsed), key=lambda item: rating_sort_key(item[1][0], rating))
+    # A moved final block must not join its URL to the next EXTINF.
+    return "".join(prefix) + "".join("".join(block).rstrip("\r\n") + "\n" for block, _ in ordered)
 
 
 def check_stream(channel: Channel, timeout: float) -> Channel:
@@ -224,6 +301,8 @@ def main() -> int:
     parser.add_argument("--source", action="append", dest="sources", help="M3U URL; порядок задаёт приоритет")
     parser.add_argument("--output", type=Path, default=Path(__file__).with_name("ru.m3u"))
     parser.add_argument("--rating", type=Path, default=Path(__file__).with_name("rating-tv.md"), help="Markdown-таблица приоритетных каналов")
+    parser.add_argument("--sort-existing", action="append", type=Path, default=[], metavar="M3U",
+                        help="пересортировать существующий файл на месте без загрузки и изменения потоков; можно повторять")
     parser.add_argument("--include", action="append", default=[], metavar="REGEX", help="оставить совпавшие каналы")
     parser.add_argument("--exclude", action="append", default=[], metavar="REGEX", help="исключить совпавшие каналы")
     parser.add_argument("--keep-noise", action="store_true", help="не удалять радио, камеры, магазины и тестовые каналы")
@@ -233,6 +312,15 @@ def main() -> int:
     parser.add_argument("--check-timeout", type=float, default=5.0, help="тайм-аут проверки одного потока")
     parser.add_argument("--workers", type=int, default=20, help="число параллельных проверок")
     args = parser.parse_args()
+    if args.sort_existing:
+        rating = load_rating(args.rating)
+        if not rating:
+            parser.error("Для --sort-existing необходим непустой рейтинг")
+        for path in args.sort_existing:
+            text = path.read_text(encoding="utf-8")
+            path.write_text(reorder_playlist(text, rating), encoding="utf-8")
+            print(f"Порядок обновлён: {path}", file=sys.stderr)
+        return 0
     if args.drop_unavailable:
         args.check_streams = True
 
@@ -276,13 +364,7 @@ def main() -> int:
 
     rating = load_rating(args.rating)
     ordered_channels = [(classify(variants[0]), variants) for variants in buckets.values()]
-    ordered_channels.sort(
-        key=lambda item: (
-            rating_position(item[1][0], rating) is None,
-            rating_position(item[1][0], rating) or 0,
-            item[1][0].name.casefold(),
-        )
-    )
+    ordered_channels.sort(key=lambda item: rating_sort_key(item[1][0], rating))
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(render(ordered_channels, epg_urls), encoding="utf-8")
