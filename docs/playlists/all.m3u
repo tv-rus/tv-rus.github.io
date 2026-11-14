@@ -1,4 +1,4 @@
-#EXTM3U x-tvg-url="https://DuckKota.github.io/iptv/epg/guide.xml.gz"
+#EXTM3U x-tvg-url="https://epg.one/ru2.xml.gz,http://www.teleguide.info/download/new3/xmltv.xml.gz,https://DuckKota.github.io/iptv/epg/guide.xml.gz"
 #EXTINF:-1 tvg-id="Russia1.ru@SD" tvg-logo="https://images4.imgbox.com/09/1a/xOkW5AON_o.jpg" group-title="Новости" tvg-name="Россия 1",Россия 1
 https://stream.smotrim.ru/hls2/russia_hd/playlist_6.m3u8
 #EXTINF:-1 tvg-id="NTV.ru@SD" tvg-logo="https://images4.imgbox.com/3c/15/tqdLxvwq_o.jpg" group-title="Кино и сериалы" tvg-name="НТВ",НТВ
