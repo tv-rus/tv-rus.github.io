@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-11-14T03:28:21.226869+00:00",
+  "last_success": {
+    "deploy": null,
+    "export": {
+      "at": "2026-11-14T03:28:21.226869+00:00",
+      "revision": "691c271dd2cd6801f7dc56cba344d77aa43105a527080f678bc2ae2aecbb3318"
+    },
+    "import": {
+      "at": "2026-11-14T02:39:54.890225+00:00",
+      "revision": "f42f4f3a9b56e34d6025eacb41228d63a9eb80826d7103798eca055b96c85779"
+    },
+    "probe": {
+      "at": "2026-11-14T03:19:55.561403+00:00",
+      "revision": "87b07adce45596595d45e2e71b9ecadfae628cb9f4fc43c3326a6e5b041b3d88"
+    }
+  },
+  "metrics": {
+    "counts": {
+      "backup_pairs": 24,
+      "catalog_primary": 0,
+      "channels": 474,
+      "different_origin_and_lineage": 0,
+      "fallback_primary": 280,
+      "no_fresh_online_stream": 194,
+      "no_selected_primary": 194,
+      "official_primary": 0,
+      "primary_changes": 241,
+      "selected_primary": 280,
+      "shared_origin_or_lineage": 24,
+      "stale": 0,
+      "streams": 604,
+      "unchecked": 193,
+      "unknown_origin_or_lineage": 0
+    },
+    "fallback_reasons": {
+      "official_absent": 474,
+      "official_compatibility_unknown": 0,
+      "official_incompatible": 0,
+      "official_not_admitted": 0,
+      "official_not_fresh": 0,
+      "official_unavailable": 0
+    },
+    "independence": "heuristic_not_verified",
+    "selection_reasons": {
+      "catalog_selected": 0,
+      "fallback_selected": 280,
+      "no_eligible_stream": 194,
+      "official_selected": 0
+    },
+    "switch_reasons": {
+      "catalog_selected": 0,
+      "fallback_selected": 48,
+      "no_eligible_stream": 193,
+      "official_selected": 0
+    }
+  },
+  "schema_version": 1,
+  "scope": "single_runner_not_global_availability"
+}
